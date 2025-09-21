@@ -1,0 +1,91 @@
+# TrustCoin Bot - Git Ignore File
+# ⚠️ IMPORTANT: This file protects sensitive information from being committed
+
+# Environment Variables (CRITICAL - NEVER COMMIT)
+.env
+.env.local
+.env.production
+.env.staging
+*.env
+
+# Bot Token and API Keys
+config.py
+secrets.json
+api_keys.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# IDE Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+log/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary Files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Backup Files
+*.bak
+*.backup
+
+# Deployment Files (may contain sensitive info)
+docker-compose.override.yml
+.dockerignore
+
+# Testing
+.coverage
+.pytest_cache/
+.tox/
+.nox/
+htmlcov/
+
+# Documentation
+docs/_build/
