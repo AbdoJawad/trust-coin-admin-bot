@@ -65,13 +65,17 @@ def run_bot():
         print("Starting Telegram bot...")
         bot_status["running"] = True
         
-        # Import and modify the bot to not start Flask
+        # Import bot module
         import bot
+        import os
+        
+        # Force polling mode by removing WEBHOOK_URL
+        os.environ.pop('WEBHOOK_URL', None)
         
         # Disable Flask in the bot
         bot.run_flask = lambda: None
         
-        # Run the bot
+        # Run the bot in polling mode
         bot.main()
         
     except Exception as e:
