@@ -49,21 +49,15 @@ def run_bot():
         bot_status["error"] = str(e)
         bot_status["running"] = False
 
+# Start the bot immediately when the module is imported
+print("Starting Telegram bot in background...")
+bot_thread = threading.Thread(target=run_bot, daemon=True)
+bot_thread.start()
+
 if __name__ == "__main__":
     # Get port from environment
     port = int(os.environ.get('PORT', 8443))
     print(f"Starting Flask app on port {port}")
-    
-    # Start Flask immediately
-    print("Flask starting...")
-    
-    # Start the bot in a background thread after a short delay
-    def delayed_bot_start():
-        time.sleep(2)  # Wait 2 seconds for Flask to start
-        run_bot()
-    
-    bot_thread = threading.Thread(target=delayed_bot_start, daemon=True)
-    bot_thread.start()
     
     # Start Flask app (this blocks)
     app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
