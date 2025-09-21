@@ -68,6 +68,11 @@ def run_bot():
         # Import bot module
         import bot
         import os
+        import asyncio
+        
+        # Create new event loop for this thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         
         # Force polling mode by removing WEBHOOK_URL
         os.environ.pop('WEBHOOK_URL', None)
