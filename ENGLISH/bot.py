@@ -798,10 +798,9 @@ def main() -> None:
         
         webhook_url = os.getenv('WEBHOOK_URL')
         
-        # Always start Flask server for render.com compatibility
-        flask_thread = threading.Thread(target=run_flask, daemon=True)
-        flask_thread.start()
-        logging.info("Flask server started on port " + str(os.getenv('PORT', 8443)))
+        # Flask server is handled by app.py on Render
+        # Don't start Flask server here to avoid port conflicts
+        logging.info("Bot starting without Flask server (handled by app.py)")
         
         if webhook_url:
             # Production mode with webhook

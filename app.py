@@ -35,10 +35,13 @@ def run_bot():
         print(f"Bot error: {e}")
 
 if __name__ == "__main__":
+    # Get port from environment
+    port = int(os.environ.get('PORT', 8443))
+    print(f"Starting Flask app on port {port}")
+    
     # Start the bot in a background thread
     bot_thread = threading.Thread(target=run_bot, daemon=True)
     bot_thread.start()
     
     # Start Flask app
-    port = int(os.environ.get('PORT', 8443))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port, debug=False)
