@@ -5,7 +5,8 @@ Main entry point for TrustCoin Bot on Render.com
 import os
 import sys
 import threading
-from flask import Flask
+import time
+from flask import Flask, jsonify
 
 # Add the ENGLISH directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'ENGLISH'))
@@ -13,35 +14,56 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'ENGLISH'))
 # Create Flask app for Render.com compatibility
 app = Flask(__name__)
 
+# Global variable to track bot status
+bot_status = {"running": False, "error": None}
+
 @app.route('/')
 def home():
-    return "TrustCoin Bot is running!"
+    return f"TrustCoin Bot is running! Status: {bot_status}"
 
 @app.route('/health')
 def health():
-    return {"status": "healthy", "bot": "TrustCoin"}
+    return jsonify({"status": "healthy", "bot": "TrustCoin", "bot_running": bot_status["running"]})
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
-    # This will be handled by the bot's webhook handler
     return "OK"
 
 def run_bot():
     """Run the Telegram bot in a separate thread"""
     try:
-        from bot import main
-        main()
+        print("Starting Telegram bot...")
+        bot_status["running"] = True
+        
+        # Import and modify the bot to not start Flask
+        import bot
+        
+        # Disable Flask in the bot
+        bot.run_flask = lambda: None
+        
+        # Run the bot
+        bot.main()
+        
     except Exception as e:
         print(f"Bot error: {e}")
+        bot_status["error"] = str(e)
+        bot_status["running"] = False
 
 if __name__ == "__main__":
     # Get port from environment
     port = int(os.environ.get('PORT', 8443))
     print(f"Starting Flask app on port {port}")
     
-    # Start the bot in a background thread
-    bot_thread = threading.Thread(target=run_bot, daemon=True)
+    # Start Flask immediately
+    print("Flask starting...")
+    
+    # Start the bot in a background thread after a short delay
+    def delayed_bot_start():
+        time.sleep(2)  # Wait 2 seconds for Flask to start
+        run_bot()
+    
+    bot_thread = threading.Thread(target=delayed_bot_start, daemon=True)
     bot_thread.start()
     
-    # Start Flask app
-    app.run(host='0.0.0.0', port=port, debug=False)
+    # Start Flask app (this blocks)
+    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
