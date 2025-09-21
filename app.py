@@ -27,7 +27,37 @@ def health():
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
-    return "OK"
+    """Handle Telegram webhook updates"""
+    try:
+        import json
+        from flask import request
+        
+        # Get the update from Telegram
+        update_data = request.get_json()
+        
+        if update_data:
+            # Import the bot's webhook handler
+            import sys
+            import os
+            sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'ENGLISH'))
+            
+            from bot import bot_app
+            import asyncio
+            from telegram import Update
+            
+            # Process the update
+            if bot_app:
+                update = Update.de_json(update_data, bot_app.bot)
+                # Run the update processing
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(bot_app.process_update(update))
+                loop.close()
+        
+        return "OK"
+    except Exception as e:
+        print(f"Webhook error: {e}")
+        return "Error", 500
 
 def run_bot():
     """Run the Telegram bot in a separate thread"""

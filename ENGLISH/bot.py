@@ -72,9 +72,13 @@ def signal_handler(sig, frame):
             pass
     sys.exit(0)
 
-# Register signal handlers
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
+# Register signal handlers only in main thread
+try:
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+except ValueError:
+    # Not in main thread, skip signal handlers
+    pass
 
 # Get bot token from environment variables
 BOT_TOKEN_ENG = os.getenv('BOT_TOKEN_ENG')
@@ -802,6 +806,9 @@ def main() -> None:
         # Don't start Flask server here to avoid port conflicts
         logging.info("Bot starting without Flask server (handled by app.py)")
         
+        # Disable auto-posting for testing
+        logging.info("Auto-posting disabled for testing")
+        
         if webhook_url:
             # Production mode with webhook
             logging.info("Starting English bot in webhook mode...")
@@ -809,23 +816,11 @@ def main() -> None:
             # Set webhook
             asyncio.run(bot_app.bot.set_webhook(url=webhook_url))
             
-            # Start auto-posting scheduler
-            def start_scheduler():
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                loop.create_task(auto_post_scheduler())
-                loop.run_forever()
-            
-            scheduler_thread = threading.Thread(target=start_scheduler, daemon=True)
-            scheduler_thread.start()
-            
-            # Update health status
             with open('/tmp/bot_healthy', 'w') as f:
                 f.write('running')
             
             logging.info("🤖 TrustCoin Bot is now active with enhanced group features!")
             logging.info("✅ Welcome messages enabled")
-            logging.info("✅ Auto-posting enabled")
             logging.info("✅ User monitoring enabled")
             logging.info("✅ Group interaction enabled")
             
@@ -840,15 +835,15 @@ def main() -> None:
             # Development mode with polling
             logging.info("Starting English bot in polling mode...")
             
-            # Start auto-posting scheduler in background
-            def start_scheduler():
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                loop.create_task(auto_post_scheduler())
-                loop.run_forever()
-            
-            scheduler_thread = threading.Thread(target=start_scheduler, daemon=True)
-            scheduler_thread.start()
+            # Auto-posting disabled for testing
+            # def start_scheduler():
+            #     loop = asyncio.new_event_loop()
+            #     asyncio.set_event_loop(loop)
+            #     loop.create_task(auto_post_scheduler())
+            #     loop.run_forever()
+            # 
+            # scheduler_thread = threading.Thread(target=start_scheduler, daemon=True)
+            # scheduler_thread.start()
             
             # Update health status
             with open('/tmp/bot_healthy', 'w') as f:
