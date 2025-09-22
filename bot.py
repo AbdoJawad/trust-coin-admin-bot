@@ -829,7 +829,15 @@ def main() -> None:
         with open('/tmp/bot_healthy', 'w') as f:
             f.write('starting')
             
-        bot_app = ApplicationBuilder().token(BOT_TOKEN_ENG).build()
+        # Build application without JobQueue to avoid weak reference issues
+        try:
+            bot_app = ApplicationBuilder().token(BOT_TOKEN_ENG).build()
+        except TypeError as e:
+            if "weak reference" in str(e):
+                logging.warning("⚠️ JobQueue weak reference issue, building without JobQueue")
+                bot_app = ApplicationBuilder().token(BOT_TOKEN_ENG).job_queue(None).build()
+            else:
+                raise
         
         # Track /start command usage
         async def track_start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -856,12 +864,16 @@ def main() -> None:
         # Add chat member handler for welcome messages
         bot_app.add_handler(ChatMemberHandler(handle_chat_member_update, ChatMemberHandler.CHAT_MEMBER))
         
-        # Add auto-posting job
-        job_queue = bot_app.job_queue
-        if job_queue:
-            # Start auto-posting after 30 seconds, then every 2 minutes
-            job_queue.run_once(start_auto_posting_job, 30)
-            logging.info("✅ Auto-posting job scheduled")
+        # Add auto-posting job (skip if JobQueue has issues)
+        try:
+            job_queue = bot_app.job_queue
+            if job_queue:
+                # Start auto-posting after 30 seconds, then every 2 minutes
+                job_queue.run_once(start_auto_posting_job, 30)
+                logging.info("✅ Auto-posting job scheduled")
+        except Exception as e:
+            logging.warning(f"⚠️ JobQueue not available, auto-posting disabled: {e}")
+            logging.info("💡 Auto-posting will be handled manually if needed")
         
         # Add handler for all messages to debug FIRST
         async def debug_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
