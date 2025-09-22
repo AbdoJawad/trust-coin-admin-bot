@@ -860,9 +860,38 @@ def main() -> None:
             logging.info("✅ Group interaction enabled")
             logging.info("✅ All advanced features available")
             
-            # Run the bot normally (Flask is handled by app.py)
-            logging.info("Starting bot polling...")
-            bot_app.run_polling(drop_pending_updates=True)
+            # Start Flask server with bot in same process
+            from flask import Flask
+            import threading
+            
+            flask_app = Flask(__name__)
+            
+            @flask_app.route('/')
+            def home():
+                return "TrustCoin Bot FULL VERSION is running! ✅"
+            
+            @flask_app.route('/health')
+            def health():
+                return {"status": "healthy", "bot": "running", "version": "full"}
+            
+            @flask_app.route('/webhook', methods=['POST'])
+            def webhook():
+                return "Webhook not configured for polling mode", 404
+            
+            # Start bot polling in background thread
+            def start_bot_polling():
+                import time
+                time.sleep(2)  # Wait for Flask to start
+                logging.info("Starting bot polling...")
+                bot_app.run_polling(drop_pending_updates=True)
+            
+            bot_thread = threading.Thread(target=start_bot_polling, daemon=True)
+            bot_thread.start()
+            
+            # Start Flask in main thread
+            port = int(os.environ.get('PORT', 8000))
+            logging.info(f"Starting Flask server on port {port}")
+            flask_app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
             
     except InvalidToken:
         logging.error("❌ Invalid bot token. Please check your BOT_TOKEN_ENG.")
