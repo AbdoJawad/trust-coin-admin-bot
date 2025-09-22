@@ -859,6 +859,18 @@ def main() -> None:
             logging.info("✅ Group interaction enabled")
             logging.info("✅ All advanced features available")
             
+            # Start bot in background thread
+            def start_bot():
+                import time
+                time.sleep(2)  # Wait for Flask to start
+                try:
+                    bot_app.run_polling(drop_pending_updates=True)
+                except Exception as e:
+                    logging.error(f"Bot polling error: {e}")
+            
+            bot_thread = threading.Thread(target=start_bot, daemon=True)
+            bot_thread.start()
+            
             # Start Flask server for Render in main thread
             from flask import Flask
             flask_app = Flask(__name__)
@@ -871,22 +883,10 @@ def main() -> None:
             def health():
                 return {"status": "healthy", "bot": "running", "version": "full"}
             
-            # Start bot in background thread
-            def start_bot():
-                import time
-                time.sleep(3)  # Wait for Flask to start
-                try:
-                    bot_app.run_polling(drop_pending_updates=True)
-                except Exception as e:
-                    logging.error(f"Bot polling error: {e}")
-            
-            bot_thread = threading.Thread(target=start_bot, daemon=True)
-            bot_thread.start()
-            
-            # Start Flask in main thread (this blocks)
+            # Start Flask in main thread (this blocks and keeps process alive)
             port = int(os.environ.get('PORT', 8000))
             logging.info(f"Starting Flask server on port {port}")
-            flask_app.run(host='0.0.0.0', port=port, debug=False)
+            flask_app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
             
     except InvalidToken:
         logging.error("❌ Invalid bot token. Please check your BOT_TOKEN_ENG.")
