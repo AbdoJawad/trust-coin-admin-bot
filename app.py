@@ -84,9 +84,30 @@ def main():
     bot_app.add_handler(CommandHandler("start", start))
     bot_app.add_handler(CallbackQueryHandler(button_handler))
     
-    # Start bot
-    print("Bot is running...")
-    bot_app.run_polling(drop_pending_updates=True)
+    # Start bot in background
+    import threading
+    def run_bot():
+        print("Bot is running...")
+        bot_app.run_polling(drop_pending_updates=True)
+    
+    bot_thread = threading.Thread(target=run_bot, daemon=True)
+    bot_thread.start()
+    
+    # Start simple Flask server for Render
+    from flask import Flask
+    app = Flask(__name__)
+    
+    @app.route('/')
+    def home():
+        return "TrustCoin Bot is running! ✅"
+    
+    @app.route('/health')
+    def health():
+        return {"status": "healthy", "bot": "running"}
+    
+    port = int(os.environ.get('PORT', 8000))
+    print(f"Starting Flask on port {port}")
+    app.run(host='0.0.0.0', port=port)
 
 if __name__ == "__main__":
     main()
