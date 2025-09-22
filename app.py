@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 """
-Redirect to full bot - app.py is disabled
+Simple Flask app for health checks
 """
-print("app.py is disabled - redirecting to full bot...")
-import sys
-import os
+from flask import Flask
 
-# Add ENGLISH directory to Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'ENGLISH'))
+app = Flask(__name__)
 
-# Change to ENGLISH directory and run the full bot
-os.chdir(os.path.join(os.path.dirname(__file__), 'ENGLISH'))
-import bot
-bot.main()
+@app.route('/')
+def home():
+    return "TrustCoin Bot is running! ✅"
+
+@app.route('/health')
+def health():
+    return {"status": "healthy", "bot": "running"}
+
+if __name__ == "__main__":
+    import os
+    port = int(os.environ.get('PORT', 8000))
+    app.run(host='0.0.0.0', port=port)
