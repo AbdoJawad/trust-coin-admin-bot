@@ -400,35 +400,32 @@ async def admin_remove_post(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle the /start command by showing the main menu."""
-    welcome_text = (
-        "🚀 **Welcome to TrustCoin (TBN)!** 🚀\n\n"
-        "💎 **Revolutionary Mobile Mining on Binance Smart Chain**\n\n"
-        "🎁 **Welcome Bonus:** Get 1,000 points instantly upon registration!\n"
-        "⛏️ **Mining:** Earn up to 1,000 points every 24 hours\n"
-        "💰 **Conversion:** 1,000 points = 1 TBN token\n"
-        "🌟 **Total Supply:** 20 Billion TBN tokens\n\n"
-        "📱 Download the app now and start your cryptocurrency journey!\n\n"
-        "👇 Choose a section to learn more:"
-    )
-    
-    # Send logo with welcome message
-    logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'assets', 'logo.png')
-    
     try:
-        with open(logo_path, 'rb') as logo_file:
-            await update.message.reply_photo(
-                photo=InputFile(logo_file, filename='logo.png'),
-                caption=welcome_text,
-                reply_markup=build_main_menu(),
-                parse_mode="Markdown"
-            )
-    except FileNotFoundError:
-        # Fallback to text message if logo not found
+        logging.info("Processing /start command - building welcome message")
+        welcome_text = (
+            "🚀 **Welcome to TrustCoin (TBN)!** 🚀\n\n"
+            "💎 **Revolutionary Mobile Mining on BSC**\n\n"
+            "🎁 **Welcome Bonus:** 1,000 points\n"
+            "⛏️ **Mining:** Up to 1,000 points/24h\n"
+            "💰 **Conversion:** 1,000 points = 1 TBN\n\n"
+            "📱 **Download:** https://www.trust-coin.site"
+        )
+        
+        logging.info("Sending welcome message with menu")
         await update.message.reply_text(
-            welcome_text,
-            reply_markup=build_main_menu(),
+            welcome_text, 
+            reply_markup=build_main_menu(), 
             parse_mode="Markdown"
         )
+        logging.info("Welcome message sent successfully")
+    except Exception as e:
+        logging.error(f"Error in start function: {e}")
+        # Send simple message if there's an error
+        try:
+            await update.message.reply_text("Welcome to TrustCoin Bot! ✅")
+        except Exception as e2:
+            logging.error(f"Failed to send fallback message: {e2}")
+        raise
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle all callback queries from inline keyboards."""
@@ -777,9 +774,15 @@ def main() -> None:
         
         # Track /start command usage
         async def track_start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-            if update.effective_user:
-                track_user_activity(update.effective_user.id, update.effective_user.username, "start_command")
-            await start(update, context)
+            try:
+                logging.info(f"Received /start command from user {update.effective_user.id if update.effective_user else 'Unknown'}")
+                if update.effective_user:
+                    track_user_activity(update.effective_user.id, update.effective_user.username, "start_command")
+                await start(update, context)
+                logging.info("Successfully processed /start command")
+            except Exception as e:
+                logging.error(f"Error in /start command: {e}")
+                raise
         
         # Add command handlers
         bot_app.add_handler(CommandHandler("start", track_start_command))
