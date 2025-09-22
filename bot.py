@@ -859,34 +859,9 @@ def main() -> None:
             logging.info("✅ Group interaction enabled")
             logging.info("✅ All advanced features available")
             
-            # Start bot in background thread
-            def start_bot():
-                import time
-                time.sleep(2)  # Wait for Flask to start
-                try:
-                    bot_app.run_polling(drop_pending_updates=True)
-                except Exception as e:
-                    logging.error(f"Bot polling error: {e}")
-            
-            bot_thread = threading.Thread(target=start_bot, daemon=True)
-            bot_thread.start()
-            
-            # Start Flask server for Render in main thread
-            from flask import Flask
-            flask_app = Flask(__name__)
-            
-            @flask_app.route('/')
-            def home():
-                return "TrustCoin Bot FULL VERSION is running! ✅"
-            
-            @flask_app.route('/health')
-            def health():
-                return {"status": "healthy", "bot": "running", "version": "full"}
-            
-            # Start Flask in main thread (this blocks and keeps process alive)
-            port = int(os.environ.get('PORT', 8000))
-            logging.info(f"Starting Flask server on port {port}")
-            flask_app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
+            # Run the bot normally (Flask is handled by app.py)
+            logging.info("Starting bot polling...")
+            bot_app.run_polling(drop_pending_updates=True)
             
     except InvalidToken:
         logging.error("❌ Invalid bot token. Please check your BOT_TOKEN_ENG.")
