@@ -846,14 +846,41 @@ def main() -> None:
             # scheduler_thread.start()
             
             # Update health status
-            with open('/tmp/bot_healthy', 'w') as f:
-                f.write('running')
+            try:
+                with open('/tmp/bot_healthy', 'w') as f:
+                    f.write('running')
+            except:
+                pass
             
             logging.info("🤖 TrustCoin Bot is now active with enhanced group features!")
             logging.info("✅ Welcome messages enabled")
-            logging.info("✅ Auto-posting enabled")
+            logging.info("✅ Auto-posting disabled for testing")
             logging.info("✅ User monitoring enabled")
             logging.info("✅ Group interaction enabled")
+            
+            # Start Flask server for Render in background
+            def start_flask():
+                from flask import Flask
+                app = Flask(__name__)
+                
+                @app.route('/')
+                def home():
+                    return "TrustCoin Bot is running! ✅"
+                
+                @app.route('/health')
+                def health():
+                    return {"status": "healthy", "bot": "running"}
+                
+                port = int(os.environ.get('PORT', 8000))
+                app.run(host='0.0.0.0', port=port, debug=False)
+            
+            # Start Flask in background thread
+            flask_thread = threading.Thread(target=start_flask, daemon=True)
+            flask_thread.start()
+            
+            # Give Flask time to start
+            import time
+            time.sleep(2)
             
             # Run the bot normally
             bot_app.run_polling(drop_pending_updates=True)
