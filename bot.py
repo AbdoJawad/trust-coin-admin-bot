@@ -860,7 +860,7 @@ def main() -> None:
             logging.info("✅ Group interaction enabled")
             logging.info("✅ All advanced features available")
             
-            # Start Flask server with bot in same process
+            # Start Flask server in background thread
             from flask import Flask
             import threading
             
@@ -878,20 +878,22 @@ def main() -> None:
             def webhook():
                 return "Webhook not configured for polling mode", 404
             
-            # Start bot polling in background thread
-            def start_bot_polling():
-                import time
-                time.sleep(2)  # Wait for Flask to start
-                logging.info("Starting bot polling...")
-                bot_app.run_polling(drop_pending_updates=True)
+            # Start Flask in background thread
+            def start_flask():
+                port = int(os.environ.get('PORT', 8000))
+                logging.info(f"Starting Flask server on port {port}")
+                flask_app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
             
-            bot_thread = threading.Thread(target=start_bot_polling, daemon=True)
-            bot_thread.start()
+            flask_thread = threading.Thread(target=start_flask, daemon=True)
+            flask_thread.start()
             
-            # Start Flask in main thread
-            port = int(os.environ.get('PORT', 8000))
-            logging.info(f"Starting Flask server on port {port}")
-            flask_app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
+            # Give Flask time to start
+            import time
+            time.sleep(3)
+            
+            # Run bot polling in main thread (no event loop issues)
+            logging.info("Starting bot polling in main thread...")
+            bot_app.run_polling(drop_pending_updates=True)
             
     except InvalidToken:
         logging.error("❌ Invalid bot token. Please check your BOT_TOKEN_ENG.")
