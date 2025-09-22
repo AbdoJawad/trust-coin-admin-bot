@@ -979,11 +979,12 @@ def main() -> None:
             # Force clear webhook before polling to avoid conflicts
             try:
                 import asyncio
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                loop.run_until_complete(bot_app.bot.delete_webhook(drop_pending_updates=True))
-                loop.close()
-                logging.info("✅ Webhook cleared before polling")
+                async def clear_webhook():
+                    await bot_app.bot.delete_webhook(drop_pending_updates=True)
+                    logging.info("✅ Webhook cleared before polling")
+                
+                # Run webhook clearing in a separate event loop
+                asyncio.run(clear_webhook())
                 time.sleep(3)  # Wait to ensure webhook is fully cleared
             except Exception as e:
                 logging.error(f"Error clearing webhook: {e}")
