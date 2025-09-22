@@ -215,46 +215,41 @@ def extract_status_change(chat_member_update: ChatMemberUpdated) -> Optional[tup
 
     return was_member, is_member
 
-async def auto_post_scheduler():
-    """Background task to send auto posts every 2 minutes."""
-    global last_auto_post_time
+async def auto_post_to_groups():
+    """Send auto posts to configured groups."""
+    global last_auto_post_time, bot_app
     
-    while True:
-        try:
-            current_time = datetime.now()
-            
-            # Check if it's time to post (every 2 minutes by default)
-            if (last_auto_post_time is None or 
-                current_time - last_auto_post_time >= timedelta(seconds=AUTO_POST_INTERVAL)):
-                
-                if auto_posts and bot_app:
-                    # Select a random post from the list
-                    post_content = random.choice(auto_posts)
-                    
-                    # Get all groups where the bot is active
-                    # Note: You'll need to configure group chat IDs in environment variables
-                    group_chat_ids = os.getenv('GROUP_CHAT_IDS', '').split(',')
-                    
-                    for chat_id in group_chat_ids:
-                        if chat_id.strip():
-                            try:
-                                await bot_app.bot.send_message(
-                                    chat_id=int(chat_id.strip()),
-                                    text=post_content,
-                                    parse_mode="Markdown"
-                                )
-                                logger.info(f"Auto-posted to group {chat_id}")
-                            except Exception as e:
-                                logger.error(f"Error auto-posting to group {chat_id}: {e}")
-                    
-                    last_auto_post_time = current_time
-            
-            # Wait 30 seconds before checking again
-            await asyncio.sleep(30)
-            
-        except Exception as e:
-            logger.error(f"Error in auto_post_scheduler: {e}")
-            await asyncio.sleep(60)  # Wait longer on error
+    if not auto_posts or not bot_app:
+        logging.warning("No auto posts or bot app available")
+        return
+    
+    # Select a random post from the list
+    post_content = random.choice(auto_posts)
+    
+    # Get all groups where the bot is active
+    group_chat_ids = os.getenv('GROUP_CHAT_IDS', '').split(',')
+    
+    if not group_chat_ids or not group_chat_ids[0].strip():
+        logging.warning("No group chat IDs configured in GROUP_CHAT_IDS")
+        return
+    
+    posts_sent = 0
+    for chat_id in group_chat_ids:
+        if chat_id.strip():
+            try:
+                await bot_app.bot.send_message(
+                    chat_id=int(chat_id.strip()),
+                    text=post_content,
+                    parse_mode="Markdown"
+                )
+                posts_sent += 1
+                logging.info(f"📢 Auto-posted to group {chat_id}")
+                await asyncio.sleep(1)  # Small delay between posts
+            except Exception as e:
+                logging.error(f"❌ Error auto-posting to group {chat_id}: {e}")
+    
+    last_auto_post_time = datetime.now()
+    logging.info(f"✅ Auto-posting completed - sent to {posts_sent} groups")
 
 async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle messages in group chats for user interaction and monitoring."""
@@ -272,13 +267,35 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     # Track user activity
     track_user_activity(user_id, username, "message")
     
-    # Auto-respond to test interaction (temporary)
-    if message_text.lower() in ["hello", "hi", "test", "مرحبا", "السلام عليكم", "hallo", "hallo", "test", "привет", "здравствуйте", "bonjour", "hallo", "test", "नमस्ते", "merhaba", "selam"]:
+    # Smart responses to greetings and keywords
+    if any(word in message_text.lower() for word in ["hello", "hi", "مرحبا", "السلام عليكم", "hallo", "привет", "здравствуйте", "bonjour", "नमस्ते", "merhaba", "selam"]):
+        responses = [
+            "🚀 Welcome to TrustCoin community! Ready to start mining? Type /start for full info!",
+            "💎 Hello! Join thousands of miners earning TBN tokens daily! /start to begin",
+            "🎁 Hi there! Get your 1,000 points welcome bonus - download our app now!",
+            "⛏️ Greetings, future miner! Start your 24-hour mining session today!"
+        ]
         try:
-            await update.message.reply_text("🚀 Hello! TrustCoin Bot is working! Type /start for more info!")
+            await update.message.reply_text(random.choice(responses))
             logging.info(f"✅ Replied to greeting in group {chat_id}")
         except Exception as e:
             logging.error(f"❌ Error replying to greeting: {e}")
+    
+    # Respond to mining-related keywords
+    elif any(word in message_text.lower() for word in ["mining", "mine", "تعدين", "نقاط", "points", "earn", "كسب"]):
+        try:
+            await update.message.reply_text("⛏️ **Mining Info:** Earn up to 1,000 points every 24 hours! 💰 1,000 points = 1 TBN token. Download the app and start mining now! 📱")
+            logging.info(f"✅ Replied to mining query in group {chat_id}")
+        except Exception as e:
+            logging.error(f"❌ Error replying to mining query: {e}")
+    
+    # Respond to app/download keywords  
+    elif any(word in message_text.lower() for word in ["app", "download", "تحميل", "تطبيق", "link", "رابط"]):
+        try:
+            await update.message.reply_text("📱 **Download TrustCoin App:**\n🤖 Android: https://play.google.com/store/apps/details?id=com.jawad06_dev.trustcoinmobile.v3\n🌐 Website: https://www.trust-coin.site")
+            logging.info(f"✅ Replied to download query in group {chat_id}")
+        except Exception as e:
+            logging.error(f"❌ Error replying to download query: {e}")
     
     # Respond to certain keywords or mentions
     bot_username = context.bot.username
@@ -830,8 +847,22 @@ def main() -> None:
         # Don't start Flask server here to avoid port conflicts
         logging.info("Bot starting without Flask server (handled by app.py)")
         
-        # Disable auto-posting for testing
-        logging.info("Auto-posting disabled for testing")
+        # Enable auto-posting
+        logging.info("✅ Auto-posting enabled - will post every 2 minutes")
+        
+        # Start auto-posting in background
+        async def start_auto_posting():
+            await asyncio.sleep(60)  # Wait 1 minute before first post
+            while True:
+                try:
+                    await auto_post_to_groups()
+                    await asyncio.sleep(AUTO_POST_INTERVAL)  # Wait between posts
+                except Exception as e:
+                    logging.error(f"Error in auto-posting loop: {e}")
+                    await asyncio.sleep(60)  # Wait 1 minute on error
+        
+        # Start auto-posting task
+        asyncio.create_task(start_auto_posting())
         
         if webhook_url:
             # Production mode with webhook
