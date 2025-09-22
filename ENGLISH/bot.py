@@ -852,11 +852,12 @@ def main() -> None:
             except:
                 pass
             
-            logging.info("🤖 TrustCoin Bot is now active with enhanced group features!")
+            logging.info("🤖 TrustCoin Bot FULL VERSION is now active with enhanced group features!")
             logging.info("✅ Welcome messages enabled")
             logging.info("✅ Auto-posting disabled for testing")
             logging.info("✅ User monitoring enabled")
             logging.info("✅ Group interaction enabled")
+            logging.info("✅ All advanced features available")
             
             # Start Flask server for Render in background
             def start_flask():
