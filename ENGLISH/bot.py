@@ -859,32 +859,34 @@ def main() -> None:
             logging.info("✅ Group interaction enabled")
             logging.info("✅ All advanced features available")
             
-            # Start Flask server for Render in background
-            def start_flask():
-                from flask import Flask
-                app = Flask(__name__)
-                
-                @app.route('/')
-                def home():
-                    return "TrustCoin Bot is running! ✅"
-                
-                @app.route('/health')
-                def health():
-                    return {"status": "healthy", "bot": "running"}
-                
-                port = int(os.environ.get('PORT', 8000))
-                app.run(host='0.0.0.0', port=port, debug=False)
+            # Start Flask server for Render in main thread
+            from flask import Flask
+            flask_app = Flask(__name__)
             
-            # Start Flask in background thread
-            flask_thread = threading.Thread(target=start_flask, daemon=True)
-            flask_thread.start()
+            @flask_app.route('/')
+            def home():
+                return "TrustCoin Bot FULL VERSION is running! ✅"
             
-            # Give Flask time to start
-            import time
-            time.sleep(2)
+            @flask_app.route('/health')
+            def health():
+                return {"status": "healthy", "bot": "running", "version": "full"}
             
-            # Run the bot normally
-            bot_app.run_polling(drop_pending_updates=True)
+            # Start bot in background thread
+            def start_bot():
+                import time
+                time.sleep(3)  # Wait for Flask to start
+                try:
+                    bot_app.run_polling(drop_pending_updates=True)
+                except Exception as e:
+                    logging.error(f"Bot polling error: {e}")
+            
+            bot_thread = threading.Thread(target=start_bot, daemon=True)
+            bot_thread.start()
+            
+            # Start Flask in main thread (this blocks)
+            port = int(os.environ.get('PORT', 8000))
+            logging.info(f"Starting Flask server on port {port}")
+            flask_app.run(host='0.0.0.0', port=port, debug=False)
             
     except InvalidToken:
         logging.error("❌ Invalid bot token. Please check your BOT_TOKEN_ENG.")
