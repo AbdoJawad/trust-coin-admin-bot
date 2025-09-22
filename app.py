@@ -30,7 +30,13 @@ def run_bot():
     global bot_running
     try:
         print("Starting bot in background...")
+        import asyncio
         import bot
+        
+        # Create new event loop for this thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
         bot_running = True
         bot.main()
     except Exception as e:
