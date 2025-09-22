@@ -52,11 +52,12 @@ admin_users = set()  # Store admin user IDs
 
 # Default auto-post messages (you can customize these)
 DEFAULT_AUTO_POSTS = [
-    "🚀 **TrustCoin Update!** 🚀\n\n💎 Don't forget to claim your daily mining rewards!\n⛏️ Start your 24-hour mining session now!\n\n📱 Download the app: https://www.trust-coin.site",
+    "🚀 **TrustCoin Update!** 🚀\n\n💎 Don't forget to claim your daily mining rewards!\n⛏️ Start your 24-hour mining session now!\n\n📱 Download Android: https://play.google.com/store/apps/details?id=com.jawad06_dev.trustcoinmobile.v3",
     "🎁 **Daily Reminder!** 🎁\n\n🌟 Complete your missions for extra points!\n🎰 Spin the Lucky Wheel for bonus rewards!\n\n💰 1,000 points = 1 TBN token!",
     "👥 **Community Update!** 👥\n\n🔗 Invite friends and earn 1,000 points per referral!\n🏆 Climb the leaderboards and win prizes!\n\n✨ Join our growing TrustCoin family!",
     "📈 **TrustCoin News!** 📈\n\n🔥 Deflationary tokenomics in action!\n🏛️ Governance features coming soon!\n\n🌐 Follow us on all social platforms!",
-    "⚡ **Mining Tip!** ⚡\n\n💡 Keep your mining sessions active for maximum rewards!\n📊 Track your progress in the app!\n\n🎯 Complete missions for bonus points!"
+    "💎 **Mining Alert!** 💎\n\n⚡ Your mining session may have expired!\n🔄 Restart your 24-hour mining cycle!\n\n🎯 Maximize your daily point earnings!",
+    "🎊 **Special Announcement!** 🎊\n\n🚀 TrustCoin ecosystem expanding!\n🌟 New features being developed!\n\n📱 Download: https://play.google.com/store/apps/details?id=com.jawad06_dev.trustcoinmobile.v3"
 ]
 
 # Signal handler for graceful shutdown
@@ -152,7 +153,7 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
         f"🎉 Welcome to {chat_title}, {new_member.first_name}!\n\n"
         f"🚀 **TrustCoin Community** welcomes you!\n\n"
         f"💎 Ready to start mining? Type /start to explore all features!\n"
-        f"📱 Download our app: https://www.trust-coin.site\n\n"
+        f"📱 Website: https://www.trust-coin.site\n\n"
         f"🎁 **New users get 1,000 points bonus!**"
     )
     
@@ -299,7 +300,7 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
             "💎 Need help with mining? Download our app and start earning points!",
             "🎯 Want to learn about missions and rewards? Use /start to explore!",
             "👥 Looking to join our community? Check out our social links with /start!",
-            "📱 Ready to start mining? Get the app at https://www.trust-coin.site"
+            "📱 Ready to start mining? Download Android app: https://play.google.com/store/apps/details?id=com.jawad06_dev.trustcoinmobile.v3"
         ]
         
         try:
@@ -315,8 +316,8 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
         "mining": "⛏️ Start your 24-hour mining session in the TrustCoin app! Earn up to 1,000 points daily!",
         "mine": "⛏️ Ready to mine? Download TrustCoin app and start earning points 24/7!",
         "points": "💰 Earn points through mining, missions, and referrals! 1,000 points = 1 TBN token!",
-        "app": "📱 Download TrustCoin app: https://www.trust-coin.site",
-        "download": "📱 Download now: https://www.trust-coin.site - Available for Android & iOS!",
+        "app": "📱 Download Android app: https://play.google.com/store/apps/details?id=com.jawad06_dev.trustcoinmobile.v3",
+        "download": "📱 Download Android app: https://play.google.com/store/apps/details?id=com.jawad06_dev.trustcoinmobile.v3",
         "referral": "🔗 Invite friends and earn 1,000 points per successful referral!",
         "token": "💎 TBN tokens will be available after mainnet launch on Binance Smart Chain!",
         "tbn": "🚀 TBN is the future of mobile mining! Join now before mainnet launch!",
@@ -709,7 +710,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         social_keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("🌐 Website", url="https://www.trust-coin.site")],
             [InlineKeyboardButton("📘 Facebook ➡️", url="https://www.facebook.com/people/TrustCoin/61579302546502/")],
-            [InlineKeyboardButton("✈️ Telegram Group ➡️", url="https://t.me/trustcoin_en")],
+            [InlineKeyboardButton("✈️ Telegram Group ➡️", url="https://t.me/+7A9zYR8BCU03ODA0")],
             [InlineKeyboardButton("🐦 X/Twitter ➡️", url="https://x.com/TBNTrustCoin")],
             [InlineKeyboardButton("Back to Main Menu", callback_data="back")],
         ])
