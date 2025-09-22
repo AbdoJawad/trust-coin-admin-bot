@@ -168,23 +168,29 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def handle_chat_member_update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle chat member updates (joins, leaves, etc.)."""
+    logging.info(f"🔔 Chat member update received: {update.chat_member}")
+    
     result = extract_status_change(update.chat_member)
     if result is None:
+        logging.info("No status change detected")
         return
 
     was_member, is_member = result
     cause_name = update.chat_member.from_user.mention_html()
     member_name = update.chat_member.new_chat_member.user.mention_html()
+    
+    logging.info(f"Member status change - Was member: {was_member}, Is member: {is_member}")
 
     if not was_member and is_member:
         # New member joined
+        logging.info(f"New member joined: {member_name}")
         await welcome_new_member(update, context)
     elif was_member and not is_member:
         # Member left
         user_id = update.chat_member.new_chat_member.user.id
         if user_id in user_activity:
             track_user_activity(user_id, update.chat_member.new_chat_member.user.username, "left_group")
-        logger.info(f"Member left: {member_name}")
+        logging.info(f"Member left: {member_name}")
 
 def extract_status_change(chat_member_update: ChatMemberUpdated) -> Optional[tuple[bool, bool]]:
     """Extract whether the user was a member before and after the update."""
@@ -791,18 +797,22 @@ def main() -> None:
         # Add chat member handler for welcome messages
         bot_app.add_handler(ChatMemberHandler(handle_chat_member_update, ChatMemberHandler.CHAT_MEMBER))
         
-        # Add message handler for group interactions (only for group chats)
-        bot_app.add_handler(MessageHandler(
-            filters.TEXT & filters.ChatType.GROUPS, 
-            handle_group_message
-        ))
-        
-        # Add handler for all messages to debug
+        # Add handler for all messages to debug FIRST
         async def debug_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             if update.message:
-                logging.info(f"DEBUG - Message received: Chat ID: {update.effective_chat.id}, Type: {update.effective_chat.type}, Text: {update.message.text[:50] if update.message.text else 'No text'}")
+                chat_type = update.effective_chat.type
+                chat_id = update.effective_chat.id
+                user_id = update.effective_user.id if update.effective_user else "Unknown"
+                text = update.message.text[:50] if update.message.text else 'No text'
+                logging.info(f"🔍 DEBUG - Message: Chat ID: {chat_id}, Type: {chat_type}, User: {user_id}, Text: {text}")
         
-        bot_app.add_handler(MessageHandler(filters.ALL, debug_all_messages), group=1)
+        bot_app.add_handler(MessageHandler(filters.ALL, debug_all_messages), group=0)
+        
+        # Add message handler for group interactions
+        bot_app.add_handler(MessageHandler(
+            filters.TEXT & (filters.ChatType.GROUP | filters.ChatType.SUPERGROUP), 
+            handle_group_message
+        ), group=1)
         
         # Force polling mode - ignore webhook URL
         webhook_url = None  # Force polling mode
