@@ -216,45 +216,76 @@ def extract_status_change(chat_member_update: ChatMemberUpdated) -> Optional[tup
 
     return was_member, is_member
 
+async def send_auto_post(context: ContextTypes.DEFAULT_TYPE = None):
+    """Send an auto post to all groups."""
+    global auto_posts
+    
+    # Use default posts if no custom posts are set
+    if not auto_posts:
+        auto_posts = DEFAULT_AUTO_POSTS.copy()
+    
+    if auto_posts:
+        # Select a random post from the list
+        post_content = random.choice(auto_posts)
+        
+        # Get all groups where the bot is active
+        group_chat_ids = os.getenv('GROUP_CHAT_IDS', '').split(',')
+        
+        # If no group IDs in env, use a default test group (you can change this)
+        if not any(chat_id.strip() for chat_id in group_chat_ids):
+            logging.warning("No GROUP_CHAT_IDS configured in environment variables")
+            return
+        
+        for chat_id in group_chat_ids:
+            if chat_id.strip():
+                try:
+                    if context and context.bot:
+                        await context.bot.send_message(
+                            chat_id=int(chat_id.strip()),
+                            text=post_content,
+                            parse_mode="Markdown"
+                        )
+                    elif bot_app:
+                        await bot_app.bot.send_message(
+                            chat_id=int(chat_id.strip()),
+                            text=post_content,
+                            parse_mode="Markdown"
+                        )
+                    logging.info(f"✅ Auto-posted to group {chat_id}")
+                except Exception as e:
+                    logging.error(f"❌ Error auto-posting to group {chat_id}: {e}")
+
+async def start_auto_posting_job(context: ContextTypes.DEFAULT_TYPE):
+    """Start the auto-posting job."""
+    try:
+        await send_auto_post(context)
+        # Schedule next post in 2 minutes
+        context.job_queue.run_once(start_auto_posting_job, 120)
+        logging.info("✅ Auto-post sent, next scheduled in 2 minutes")
+    except Exception as e:
+        logging.error(f"❌ Error in auto-posting job: {e}")
+        # Retry in 5 minutes on error
+        context.job_queue.run_once(start_auto_posting_job, 300)
+
 async def auto_post_scheduler():
-    """Background task to send auto posts every 2 minutes."""
+    """Schedule automatic posts to groups."""
     global last_auto_post_time
     
     while True:
         try:
             current_time = datetime.now()
             
-            # Check if it's time to post (every 2 minutes by default)
+            # Check if it's time to post (every 2 minutes)
             if (last_auto_post_time is None or 
-                current_time - last_auto_post_time >= timedelta(seconds=AUTO_POST_INTERVAL)):
+                (current_time - last_auto_post_time).total_seconds() >= 120):
                 
-                if auto_posts and bot_app:
-                    # Select a random post from the list
-                    post_content = random.choice(auto_posts)
-                    
-                    # Get all groups where the bot is active
-                    # Note: You'll need to configure group chat IDs in environment variables
-                    group_chat_ids = os.getenv('GROUP_CHAT_IDS', '').split(',')
-                    
-                    for chat_id in group_chat_ids:
-                        if chat_id.strip():
-                            try:
-                                await bot_app.bot.send_message(
-                                    chat_id=int(chat_id.strip()),
-                                    text=post_content,
-                                    parse_mode="Markdown"
-                                )
-                                logger.info(f"Auto-posted to group {chat_id}")
-                            except Exception as e:
-                                logger.error(f"Error auto-posting to group {chat_id}: {e}")
-                    
-                    last_auto_post_time = current_time
-            
-            # Wait 30 seconds before checking again
-            await asyncio.sleep(30)
+                await send_auto_post()
+                last_auto_post_time = current_time
+                
+            await asyncio.sleep(30)  # Check every 30 seconds
             
         except Exception as e:
-            logger.error(f"Error in auto_post_scheduler: {e}")
+            logger.error(f"Error in auto-post scheduler: {e}")
             await asyncio.sleep(60)  # Wait longer on error
 
 async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -825,6 +856,13 @@ def main() -> None:
         # Add chat member handler for welcome messages
         bot_app.add_handler(ChatMemberHandler(handle_chat_member_update, ChatMemberHandler.CHAT_MEMBER))
         
+        # Add auto-posting job
+        job_queue = bot_app.job_queue
+        if job_queue:
+            # Start auto-posting after 30 seconds, then every 2 minutes
+            job_queue.run_once(start_auto_posting_job, 30)
+            logging.info("✅ Auto-posting job scheduled")
+        
         # Add handler for all messages to debug FIRST
         async def debug_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             if update.message:
@@ -851,14 +889,7 @@ def main() -> None:
         logging.info("Bot starting without Flask server (handled by app.py)")
         
         # Enable auto-posting
-        logging.info("✅ Auto-posting enabled - starting scheduler...")
-        
-        # Start auto-posting scheduler in background
-        async def start_auto_posting():
-            await asyncio.sleep(5)  # Wait for bot to fully start
-            await auto_post_scheduler()
-        
-        asyncio.create_task(start_auto_posting())
+        logging.info("✅ Auto-posting enabled - will start after bot initialization")
         
         if webhook_url:
             # Production mode with webhook
