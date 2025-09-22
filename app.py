@@ -1,20 +1,9 @@
 #!/usr/bin/env python3
 """
-Simple Flask app for health checks
+Run the full TrustCoin bot
 """
-from flask import Flask
+print("Starting TrustCoin Bot from app.py...")
 
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "TrustCoin Bot is running! ✅"
-
-@app.route('/health')
-def health():
-    return {"status": "healthy", "bot": "running"}
-
-if __name__ == "__main__":
-    import os
-    port = int(os.environ.get('PORT', 8000))
-    app.run(host='0.0.0.0', port=port)
+# Import and run the main bot
+import bot
+bot.main()
