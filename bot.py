@@ -267,10 +267,18 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     message_text = update.message.text or ""
     chat_id = update.effective_chat.id
     
-    logging.info(f"Group message received - Chat ID: {chat_id}, User: {user_id}, Message: {message_text[:50]}...")
+    logging.info(f"📨 Group message received - Chat ID: {chat_id}, User: {user_id}, Message: {message_text[:50]}...")
     
     # Track user activity
     track_user_activity(user_id, username, "message")
+    
+    # Auto-respond to test interaction (temporary)
+    if message_text.lower() in ["hello", "hi", "test", "مرحبا", "السلام عليكم"]:
+        try:
+            await update.message.reply_text("🚀 Hello! TrustCoin Bot is working! Type /start for more info!")
+            logging.info(f"✅ Replied to greeting in group {chat_id}")
+        except Exception as e:
+            logging.error(f"❌ Error replying to greeting: {e}")
     
     # Respond to certain keywords or mentions
     bot_username = context.bot.username
@@ -804,7 +812,8 @@ def main() -> None:
                 chat_id = update.effective_chat.id
                 user_id = update.effective_user.id if update.effective_user else "Unknown"
                 text = update.message.text[:50] if update.message.text else 'No text'
-                logging.info(f"🔍 DEBUG - Message: Chat ID: {chat_id}, Type: {chat_type}, User: {user_id}, Text: {text}")
+                message_type = "text" if update.message.text else "other"
+                logging.info(f"🔍 DEBUG - Message: Chat ID: {chat_id}, Type: {chat_type}, User: {user_id}, Text: {text}, MsgType: {message_type}")
         
         bot_app.add_handler(MessageHandler(filters.ALL, debug_all_messages), group=0)
         
