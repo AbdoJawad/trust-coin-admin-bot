@@ -850,19 +850,7 @@ def main() -> None:
         # Enable auto-posting
         logging.info("✅ Auto-posting enabled - will post every 2 minutes")
         
-        # Start auto-posting in background
-        async def start_auto_posting():
-            await asyncio.sleep(60)  # Wait 1 minute before first post
-            while True:
-                try:
-                    await auto_post_to_groups()
-                    await asyncio.sleep(AUTO_POST_INTERVAL)  # Wait between posts
-                except Exception as e:
-                    logging.error(f"Error in auto-posting loop: {e}")
-                    await asyncio.sleep(60)  # Wait 1 minute on error
-        
-        # Start auto-posting task
-        asyncio.create_task(start_auto_posting())
+        # Auto-posting will be started after bot starts running
         
         if webhook_url:
             # Production mode with webhook
@@ -944,6 +932,29 @@ def main() -> None:
             # Give Flask time to start
             import time
             time.sleep(3)
+            
+            # Add post_init callback to start auto-posting
+            async def post_init(application):
+                """Called after the bot starts."""
+                logging.info("🚀 Bot started successfully - initializing auto-posting")
+                
+                # Start auto-posting task
+                async def start_auto_posting():
+                    await asyncio.sleep(60)  # Wait 1 minute before first post
+                    while True:
+                        try:
+                            await auto_post_to_groups()
+                            await asyncio.sleep(AUTO_POST_INTERVAL)  # Wait between posts
+                        except Exception as e:
+                            logging.error(f"Error in auto-posting loop: {e}")
+                            await asyncio.sleep(60)  # Wait 1 minute on error
+                
+                # Create the auto-posting task
+                asyncio.create_task(start_auto_posting())
+                logging.info("✅ Auto-posting task started")
+            
+            # Set the post_init callback
+            bot_app.post_init = post_init
             
             # Run bot polling in main thread (no event loop issues)
             logging.info("Starting bot polling in main thread...")
