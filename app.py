@@ -1,102 +1,92 @@
 #!/usr/bin/env python3
 """
-Main entry point for TrustCoin Bot on Render.com
+Simple TrustCoin Bot for Render.com
 """
 import os
-import sys
-import threading
-import time
-from flask import Flask, jsonify
+import logging
+from dotenv import load_dotenv
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 
-# Add the ENGLISH directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'ENGLISH'))
+# Load environment variables
+load_dotenv()
 
-# Create Flask app for Render.com compatibility
-app = Flask(__name__)
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Global variable to track bot status
-bot_status = {"running": False, "error": None}
+# Get bot token
+BOT_TOKEN = os.getenv('BOT_TOKEN_ENG')
 
-@app.route('/')
-def home():
-    return f"TrustCoin Bot is running! Status: {bot_status}"
+if not BOT_TOKEN:
+    raise ValueError("BOT_TOKEN_ENG not found!")
 
-@app.route('/health')
-def health():
-    return jsonify({"status": "healthy", "bot": "TrustCoin", "bot_running": bot_status["running"]})
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /start command"""
+    keyboard = [
+        [InlineKeyboardButton("📋 Overview", callback_data="overview")],
+        [InlineKeyboardButton("⛏️ Mining", callback_data="mining")],
+        [InlineKeyboardButton("🌐 Website", url="https://www.trust-coin.site")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    welcome_text = (
+        "🚀 **Welcome to TrustCoin (TBN)!** 🚀\n\n"
+        "💎 **Revolutionary Mobile Mining on BSC**\n\n"
+        "🎁 **Welcome Bonus:** 1,000 points\n"
+        "⛏️ **Mining:** Up to 1,000 points/24h\n"
+        "💰 **Conversion:** 1,000 points = 1 TBN\n\n"
+        "📱 **Download:** https://www.trust-coin.site"
+    )
+    
+    await update.message.reply_text(
+        welcome_text, 
+        reply_markup=reply_markup, 
+        parse_mode="Markdown"
+    )
 
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    """Handle Telegram webhook updates"""
-    try:
-        import json
-        from flask import request
-        
-        # Get the update from Telegram
-        update_data = request.get_json()
-        
-        if update_data:
-            # Import the bot's webhook handler
-            import sys
-            import os
-            sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'ENGLISH'))
-            
-            from bot import bot_app
-            import asyncio
-            from telegram import Update
-            
-            # Process the update
-            if bot_app:
-                update = Update.de_json(update_data, bot_app.bot)
-                # Run the update processing
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                loop.run_until_complete(bot_app.process_update(update))
-                loop.close()
-        
-        return "OK"
-    except Exception as e:
-        print(f"Webhook error: {e}")
-        return "Error", 500
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle button clicks"""
+    query = update.callback_query
+    await query.answer()
+    
+    if query.data == "overview":
+        text = (
+            "📋 **TrustCoin Overview**\n\n"
+            "🌟 Revolutionary blockchain rewards ecosystem\n"
+            "🔗 Built on Binance Smart Chain\n"
+            "💎 Deflationary tokenomics\n"
+            "🎯 Fair distribution model\n\n"
+            "Join the future of mobile mining!"
+        )
+    elif query.data == "mining":
+        text = (
+            "⛏️ **Mining System**\n\n"
+            "🔥 **24-hour mining cycles**\n"
+            "📊 **Up to 1,000 points per session**\n"
+            "⚡ **No energy consumption**\n"
+            "📱 **Mobile-first design**\n\n"
+            "Start mining now in the app!"
+        )
+    else:
+        text = "Invalid option!"
+    
+    await query.edit_message_text(text, parse_mode="Markdown")
 
-def run_bot():
-    """Run the Telegram bot in a separate thread"""
-    try:
-        print("Starting Telegram bot...")
-        bot_status["running"] = True
-        
-        # Import bot module
-        import bot
-        import os
-        import asyncio
-        
-        # Create new event loop for this thread
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        # Force polling mode by removing WEBHOOK_URL
-        os.environ.pop('WEBHOOK_URL', None)
-        
-        # Disable Flask in the bot
-        bot.run_flask = lambda: None
-        
-        # Run the bot in polling mode
-        bot.main()
-        
-    except Exception as e:
-        print(f"Bot error: {e}")
-        bot_status["error"] = str(e)
-        bot_status["running"] = False
-
-# Start the bot immediately when the module is imported
-print("Starting Telegram bot in background...")
-bot_thread = threading.Thread(target=run_bot, daemon=True)
-bot_thread.start()
+def main():
+    """Main function"""
+    print("Starting TrustCoin Bot...")
+    
+    # Create application
+    bot_app = ApplicationBuilder().token(BOT_TOKEN).build()
+    
+    # Add handlers
+    bot_app.add_handler(CommandHandler("start", start))
+    bot_app.add_handler(CallbackQueryHandler(button_handler))
+    
+    # Start bot
+    print("Bot is running...")
+    bot_app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
-    # Get port from environment
-    port = int(os.environ.get('PORT', 8443))
-    print(f"Starting Flask app on port {port}")
-    
-    # Start Flask app (this blocks)
-    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
+    main()
