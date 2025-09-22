@@ -20,6 +20,11 @@ def home():
 def health():
     return {"status": "healthy", "bot_running": bot_running}
 
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    """Handle Telegram webhook - not used in polling mode"""
+    return "Webhook not configured for polling mode", 404
+
 def run_bot():
     """Run the bot in background"""
     global bot_running

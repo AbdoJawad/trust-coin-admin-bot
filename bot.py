@@ -800,7 +800,8 @@ def main() -> None:
             handle_group_message
         ))
         
-        webhook_url = os.getenv('WEBHOOK_URL')
+        # Force polling mode - ignore webhook URL
+        webhook_url = None  # Force polling mode
         
         # Flask server is handled by app.py on Render
         # Don't start Flask server here to avoid port conflicts
