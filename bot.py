@@ -237,14 +237,22 @@ async def auto_post_to_groups():
     for chat_id in group_chat_ids:
         if chat_id.strip():
             try:
+                # Clean the chat_id - remove any extra dashes
+                clean_chat_id = chat_id.strip()
+                if clean_chat_id.startswith('--'):
+                    clean_chat_id = clean_chat_id[1:]  # Remove one extra dash
+                
+                chat_id_int = int(clean_chat_id)
                 await bot_app.bot.send_message(
-                    chat_id=int(chat_id.strip()),
+                    chat_id=chat_id_int,
                     text=post_content,
                     parse_mode="Markdown"
                 )
                 posts_sent += 1
-                logging.info(f"📢 Auto-posted to group {chat_id}")
+                logging.info(f"📢 Auto-posted to group {clean_chat_id}")
                 await asyncio.sleep(1)  # Small delay between posts
+            except ValueError as e:
+                logging.error(f"❌ Invalid chat ID format {chat_id}: {e}")
             except Exception as e:
                 logging.error(f"❌ Error auto-posting to group {chat_id}: {e}")
     
@@ -958,6 +966,19 @@ def main() -> None:
             
             # Run bot polling in main thread (no event loop issues)
             logging.info("Starting bot polling in main thread...")
+            
+            # Add error handler for conflicts
+            async def error_handler(update, context):
+                """Handle errors during bot operation."""
+                if "Conflict" in str(context.error):
+                    logging.warning("⚠️ Bot conflict detected - another instance may be running")
+                    logging.info("Waiting 30 seconds before retrying...")
+                    await asyncio.sleep(30)
+                else:
+                    logging.error(f"❌ Bot error: {context.error}")
+            
+            bot_app.add_error_handler(error_handler)
+            
             bot_app.run_polling(drop_pending_updates=True)
             
     except InvalidToken:
