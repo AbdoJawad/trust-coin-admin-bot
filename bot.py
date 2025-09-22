@@ -141,25 +141,19 @@ def track_user_activity(user_id: int, username: str = None, activity_type: str =
         user_activity[user_id]['activity_types'].append(activity_type)
 
 async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Welcome new members to the group."""
-    if not update.chat_member or not update.chat_member.new_chat_member:
-        return
-        
-    member = update.chat_member.new_chat_member
-    if member.user.is_bot:
-        return
-        
+    """Send welcome message to new group members."""
+    new_member = update.chat_member.new_chat_member.user
+    chat_title = update.effective_chat.title or "this group"
+    chat_id = update.effective_chat.id
+    
+    logging.info(f"New member joined - Chat ID: {chat_id}, User: {new_member.first_name} ({new_member.id})")
+    
     welcome_message = (
-        f"🎉 **Welcome to TrustCoin Community, {member.user.first_name}!** 🎉\n\n"
-        "🚀 **Get started with TrustCoin:**\n"
-        "1️⃣ Download our app and get 1,000 points bonus!\n"
-        "2️⃣ Start mining and earn up to 1,000 points every 24 hours\n"
-        "3️⃣ Complete missions and spin the Lucky Wheel\n"
-        "4️⃣ Invite friends and earn 1,000 points per referral\n\n"
-        "💎 **1,000 points = 1 TBN token**\n\n"
-        "📱 **Download:** https://www.trust-coin.site\n"
-        "🌐 **Website:** https://www.trust-coin.site\n\n"
-        "Type /start to explore all features! 🚀"
+        f"🎉 Welcome to {chat_title}, {new_member.first_name}!\n\n"
+        f"🚀 **TrustCoin Community** welcomes you!\n\n"
+        f"💎 Ready to start mining? Type /start to explore all features!\n"
+        f"📱 Download our app: https://www.trust-coin.site\n\n"
+        f"🎁 **New users get 1,000 points bonus!**"
     )
     
     try:
@@ -168,13 +162,9 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
             text=welcome_message,
             parse_mode="Markdown"
         )
-        
-        # Track new member
-        track_user_activity(member.user.id, member.user.username, "joined_group")
-        logger.info(f"Welcomed new member: {member.user.first_name} ({member.user.id})")
-        
+        logging.info(f"Welcome message sent to {new_member.first_name} in {chat_title}")
     except Exception as e:
-        logger.error(f"Error sending welcome message: {e}")
+        logging.error(f"Error sending welcome message: {e}")
 
 async def handle_chat_member_update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle chat member updates (joins, leaves, etc.)."""
@@ -263,11 +253,15 @@ async def auto_post_scheduler():
 async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle messages in group chats for user interaction and monitoring."""
     if not update.message or not update.effective_user:
+        logging.info("No message or user in group message handler")
         return
     
     user_id = update.effective_user.id
     username = update.effective_user.username
     message_text = update.message.text or ""
+    chat_id = update.effective_chat.id
+    
+    logging.info(f"Group message received - Chat ID: {chat_id}, User: {user_id}, Message: {message_text[:50]}...")
     
     # Track user activity
     track_user_activity(user_id, username, "message")
@@ -802,6 +796,13 @@ def main() -> None:
             filters.TEXT & filters.ChatType.GROUPS, 
             handle_group_message
         ))
+        
+        # Add handler for all messages to debug
+        async def debug_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+            if update.message:
+                logging.info(f"DEBUG - Message received: Chat ID: {update.effective_chat.id}, Type: {update.effective_chat.type}, Text: {update.message.text[:50] if update.message.text else 'No text'}")
+        
+        bot_app.add_handler(MessageHandler(filters.ALL, debug_all_messages), group=1)
         
         # Force polling mode - ignore webhook URL
         webhook_url = None  # Force polling mode
