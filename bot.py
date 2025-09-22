@@ -272,13 +272,24 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     # Track user activity
     track_user_activity(user_id, username, "message")
     
-    # Auto-respond to test interaction (temporary)
-    if message_text.lower() in ["hello", "hi", "test", "مرحبا", "السلام عليكم"]:
+    # Smart responses to greetings and keywords
+    message_lower = message_text.lower()
+    
+    # Greeting responses
+    greetings = ["hello", "hi", "hey", "مرحبا", "السلام عليكم", "صباح الخير", "مساء الخير", "hallo", "привет", "здравствуйте", "bonjour", "नमस्ते", "merhaba", "selam"]
+    if any(greeting in message_lower for greeting in greetings):
+        responses = [
+            "🚀 Hello! I'm TrustCoin Bot! Type /start to explore all features!",
+            "💎 Welcome! Ready to start mining? Download the app and earn points!",
+            "🎯 Welcome to TrustCoin community! Type /start for more info!",
+            "👥 Hello! Join our growing community and earn with TrustCoin!"
+        ]
         try:
-            await update.message.reply_text("🚀 Hello! TrustCoin Bot is working! Type /start for more info!")
+            await update.message.reply_text(random.choice(responses))
             logging.info(f"✅ Replied to greeting in group {chat_id}")
         except Exception as e:
             logging.error(f"❌ Error replying to greeting: {e}")
+        return
     
     # Respond to certain keywords or mentions
     bot_username = context.bot.username
@@ -299,23 +310,31 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
         except Exception as e:
             logger.error(f"Error responding to mention: {e}")
     
-    # Respond to common keywords
+    # Keyword responses (English only)
     keywords_responses = {
         "mining": "⛏️ Start your 24-hour mining session in the TrustCoin app! Earn up to 1,000 points daily!",
+        "mine": "⛏️ Ready to mine? Download TrustCoin app and start earning points 24/7!",
         "points": "💰 Earn points through mining, missions, and referrals! 1,000 points = 1 TBN token!",
-        "app": "📱 Download the TrustCoin app: https://www.trust-coin.site",
+        "app": "📱 Download TrustCoin app: https://www.trust-coin.site",
+        "download": "📱 Download now: https://www.trust-coin.site - Available for Android & iOS!",
         "referral": "🔗 Invite friends and earn 1,000 points per successful referral!",
         "token": "💎 TBN tokens will be available after mainnet launch on Binance Smart Chain!",
-        "help": "❓ Type /start to see all available information and features!"
+        "tbn": "🚀 TBN is the future of mobile mining! Join now before mainnet launch!",
+        "help": "❓ Type /start to see all available information and features!",
+        "price": "💰 Price will be determined at official launch! Start mining now to collect maximum points!",
+        "when": "⏰ Very soon! Keep mining to be ready for launch!"
     }
     
-    for keyword, response in keywords_responses.items():
-        if keyword in message_text.lower() and random.random() < 0.3:  # 30% chance to respond
+    # Check for keywords (30% response rate to avoid spam)
+    for keyword, responses in keywords_responses.items():
+        if keyword in message_lower and random.random() < 0.3:
             try:
+                response = random.choice(responses) if isinstance(responses, list) else responses
                 await update.message.reply_text(response, parse_mode="Markdown")
+                logging.info(f"✅ Replied to keyword '{keyword}' in group {chat_id}")
                 break
             except Exception as e:
-                logger.error(f"Error responding to keyword {keyword}: {e}")
+                logging.error(f"❌ Error responding to keyword {keyword}: {e}")
 
 # Admin commands
 
@@ -598,7 +617,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         # Download app section with direct links
         download_keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("📱 Download for iOS", url="https://apps.apple.com/app/trustcoin")],
-            [InlineKeyboardButton("🤖 Download for Android", url="https://play.google.com/store/apps/details?id=com.trustcoin")],
+            [InlineKeyboardButton("🤖 Download for Android", url="https://play.google.com/store/apps/details?id=com.jawad06_dev.trustcoinmobile.v3")],
             [InlineKeyboardButton("🌐 Visit Official Website", url="https://www.trust-coin.site")],
             [InlineKeyboardButton("⬅️ Back to Main Menu", callback_data="back")],
         ])
@@ -690,7 +709,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         social_keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("🌐 Website", url="https://www.trust-coin.site")],
             [InlineKeyboardButton("📘 Facebook ➡️", url="https://www.facebook.com/people/TrustCoin/61579302546502/")],
-            [InlineKeyboardButton("✈️ Telegram Group ➡️", url="https://t.me/+djORe9HGRi45ZDdk")],
+            [InlineKeyboardButton("✈️ Telegram Group ➡️", url="https://t.me/trustcoin_en")],
             [InlineKeyboardButton("🐦 X/Twitter ➡️", url="https://x.com/TBNTrustCoin")],
             [InlineKeyboardButton("Back to Main Menu", callback_data="back")],
         ])
@@ -830,8 +849,15 @@ def main() -> None:
         # Don't start Flask server here to avoid port conflicts
         logging.info("Bot starting without Flask server (handled by app.py)")
         
-        # Disable auto-posting for testing
-        logging.info("Auto-posting disabled for testing")
+        # Enable auto-posting
+        logging.info("✅ Auto-posting enabled - starting scheduler...")
+        
+        # Start auto-posting scheduler in background
+        async def start_auto_posting():
+            await asyncio.sleep(5)  # Wait for bot to fully start
+            await auto_post_scheduler()
+        
+        asyncio.create_task(start_auto_posting())
         
         if webhook_url:
             # Production mode with webhook
