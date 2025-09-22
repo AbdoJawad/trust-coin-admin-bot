@@ -86,12 +86,34 @@ def main():
     
     # Start bot in background
     import threading
+    import asyncio
+    
     def run_bot():
         print("Bot is running...")
-        bot_app.run_polling(drop_pending_updates=True)
+        # Create new event loop for this thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            # Use asyncio.run instead of run_polling for better thread support
+            async def start_bot():
+                async with bot_app:
+                    await bot_app.start()
+                    await bot_app.updater.start_polling(drop_pending_updates=True)
+                    # Keep running
+                    await asyncio.Event().wait()
+            
+            loop.run_until_complete(start_bot())
+        except Exception as e:
+            print(f"Bot error: {e}")
+        finally:
+            loop.close()
     
     bot_thread = threading.Thread(target=run_bot, daemon=True)
     bot_thread.start()
+    
+    # Give bot time to start
+    import time
+    time.sleep(2)
     
     # Start simple Flask server for Render
     from flask import Flask
@@ -103,7 +125,12 @@ def main():
     
     @app.route('/health')
     def health():
-        return {"status": "healthy", "bot": "running"}
+        return {
+            "status": "healthy", 
+            "bot": "running",
+            "bot_thread_alive": bot_thread.is_alive(),
+            "token_loaded": bool(BOT_TOKEN)
+        }
     
     port = int(os.environ.get('PORT', 8000))
     print(f"Starting Flask on port {port}")
