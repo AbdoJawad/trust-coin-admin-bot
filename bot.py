@@ -52,12 +52,11 @@ admin_users = set()  # Store admin user IDs
 
 # Default auto-post messages (you can customize these)
 DEFAULT_AUTO_POSTS = [
-    "🚀 **TrustCoin Update!** 🚀\n\n💎 Don't forget to claim your daily mining rewards!\n⛏️ Start your 24-hour mining session now!\n\n📱 Download Android: https://play.google.com/store/apps/details?id=com.jawad06_dev.trustcoinmobile.v3",
+    "🚀 **TrustCoin Update!** 🚀\n\n💎 Don't forget to claim your daily mining rewards!\n⛏️ Start your 24-hour mining session now!\n\n📱 Download the app: https://www.trust-coin.site",
     "🎁 **Daily Reminder!** 🎁\n\n🌟 Complete your missions for extra points!\n🎰 Spin the Lucky Wheel for bonus rewards!\n\n💰 1,000 points = 1 TBN token!",
     "👥 **Community Update!** 👥\n\n🔗 Invite friends and earn 1,000 points per referral!\n🏆 Climb the leaderboards and win prizes!\n\n✨ Join our growing TrustCoin family!",
     "📈 **TrustCoin News!** 📈\n\n🔥 Deflationary tokenomics in action!\n🏛️ Governance features coming soon!\n\n🌐 Follow us on all social platforms!",
-    "💎 **Mining Alert!** 💎\n\n⚡ Your mining session may have expired!\n🔄 Restart your 24-hour mining cycle!\n\n🎯 Maximize your daily point earnings!",
-    "🎊 **Special Announcement!** 🎊\n\n🚀 TrustCoin ecosystem expanding!\n🌟 New features being developed!\n\n📱 Download: https://play.google.com/store/apps/details?id=com.jawad06_dev.trustcoinmobile.v3"
+    "⚡ **Mining Tip!** ⚡\n\n💡 Keep your mining sessions active for maximum rewards!\n📊 Track your progress in the app!\n\n🎯 Complete missions for bonus points!"
 ]
 
 # Signal handler for graceful shutdown
@@ -153,7 +152,7 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
         f"🎉 Welcome to {chat_title}, {new_member.first_name}!\n\n"
         f"🚀 **TrustCoin Community** welcomes you!\n\n"
         f"💎 Ready to start mining? Type /start to explore all features!\n"
-        f"📱 Website: https://www.trust-coin.site\n\n"
+        f"📱 Download our app: https://www.trust-coin.site\n\n"
         f"🎁 **New users get 1,000 points bonus!**"
     )
     
@@ -216,76 +215,45 @@ def extract_status_change(chat_member_update: ChatMemberUpdated) -> Optional[tup
 
     return was_member, is_member
 
-async def send_auto_post(context: ContextTypes.DEFAULT_TYPE = None):
-    """Send an auto post to all groups."""
-    global auto_posts
-    
-    # Use default posts if no custom posts are set
-    if not auto_posts:
-        auto_posts = DEFAULT_AUTO_POSTS.copy()
-    
-    if auto_posts:
-        # Select a random post from the list
-        post_content = random.choice(auto_posts)
-        
-        # Get all groups where the bot is active
-        group_chat_ids = os.getenv('GROUP_CHAT_IDS', '').split(',')
-        
-        # If no group IDs in env, use a default test group (you can change this)
-        if not any(chat_id.strip() for chat_id in group_chat_ids):
-            logging.warning("No GROUP_CHAT_IDS configured in environment variables")
-            return
-        
-        for chat_id in group_chat_ids:
-            if chat_id.strip():
-                try:
-                    if context and context.bot:
-                        await context.bot.send_message(
-                            chat_id=int(chat_id.strip()),
-                            text=post_content,
-                            parse_mode="Markdown"
-                        )
-                    elif bot_app:
-                        await bot_app.bot.send_message(
-                            chat_id=int(chat_id.strip()),
-                            text=post_content,
-                            parse_mode="Markdown"
-                        )
-                    logging.info(f"✅ Auto-posted to group {chat_id}")
-                except Exception as e:
-                    logging.error(f"❌ Error auto-posting to group {chat_id}: {e}")
-
-async def start_auto_posting_job(context: ContextTypes.DEFAULT_TYPE):
-    """Start the auto-posting job."""
-    try:
-        await send_auto_post(context)
-        # Schedule next post in 2 minutes
-        context.job_queue.run_once(start_auto_posting_job, 120)
-        logging.info("✅ Auto-post sent, next scheduled in 2 minutes")
-    except Exception as e:
-        logging.error(f"❌ Error in auto-posting job: {e}")
-        # Retry in 5 minutes on error
-        context.job_queue.run_once(start_auto_posting_job, 300)
-
 async def auto_post_scheduler():
-    """Schedule automatic posts to groups."""
+    """Background task to send auto posts every 2 minutes."""
     global last_auto_post_time
     
     while True:
         try:
             current_time = datetime.now()
             
-            # Check if it's time to post (every 2 minutes)
+            # Check if it's time to post (every 2 minutes by default)
             if (last_auto_post_time is None or 
-                (current_time - last_auto_post_time).total_seconds() >= 120):
+                current_time - last_auto_post_time >= timedelta(seconds=AUTO_POST_INTERVAL)):
                 
-                await send_auto_post()
-                last_auto_post_time = current_time
-                
-            await asyncio.sleep(30)  # Check every 30 seconds
+                if auto_posts and bot_app:
+                    # Select a random post from the list
+                    post_content = random.choice(auto_posts)
+                    
+                    # Get all groups where the bot is active
+                    # Note: You'll need to configure group chat IDs in environment variables
+                    group_chat_ids = os.getenv('GROUP_CHAT_IDS', '').split(',')
+                    
+                    for chat_id in group_chat_ids:
+                        if chat_id.strip():
+                            try:
+                                await bot_app.bot.send_message(
+                                    chat_id=int(chat_id.strip()),
+                                    text=post_content,
+                                    parse_mode="Markdown"
+                                )
+                                logger.info(f"Auto-posted to group {chat_id}")
+                            except Exception as e:
+                                logger.error(f"Error auto-posting to group {chat_id}: {e}")
+                    
+                    last_auto_post_time = current_time
+            
+            # Wait 30 seconds before checking again
+            await asyncio.sleep(30)
             
         except Exception as e:
-            logger.error(f"Error in auto-post scheduler: {e}")
+            logger.error(f"Error in auto_post_scheduler: {e}")
             await asyncio.sleep(60)  # Wait longer on error
 
 async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -304,24 +272,13 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     # Track user activity
     track_user_activity(user_id, username, "message")
     
-    # Smart responses to greetings and keywords
-    message_lower = message_text.lower()
-    
-    # Greeting responses
-    greetings = ["hello", "hi", "hey", "مرحبا", "السلام عليكم", "صباح الخير", "مساء الخير", "hallo", "привет", "здравствуйте", "bonjour", "नमस्ते", "merhaba", "selam"]
-    if any(greeting in message_lower for greeting in greetings):
-        responses = [
-            "🚀 Hello! I'm TrustCoin Bot! Type /start to explore all features!",
-            "💎 Welcome! Ready to start mining? Download the app and earn points!",
-            "🎯 Welcome to TrustCoin community! Type /start for more info!",
-            "👥 Hello! Join our growing community and earn with TrustCoin!"
-        ]
+    # Auto-respond to test interaction (temporary)
+    if message_text.lower() in ["hello", "hi", "test", "مرحبا", "السلام عليكم", "hallo", "hallo", "test", "привет", "здравствуйте", "bonjour", "hallo", "test", "नमस्ते", "merhaba", "selam"]:
         try:
-            await update.message.reply_text(random.choice(responses))
+            await update.message.reply_text("🚀 Hello! TrustCoin Bot is working! Type /start for more info!")
             logging.info(f"✅ Replied to greeting in group {chat_id}")
         except Exception as e:
             logging.error(f"❌ Error replying to greeting: {e}")
-        return
     
     # Respond to certain keywords or mentions
     bot_username = context.bot.username
@@ -331,7 +288,7 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
             "💎 Need help with mining? Download our app and start earning points!",
             "🎯 Want to learn about missions and rewards? Use /start to explore!",
             "👥 Looking to join our community? Check out our social links with /start!",
-            "📱 Ready to start mining? Download Android app: https://play.google.com/store/apps/details?id=com.jawad06_dev.trustcoinmobile.v3"
+            "📱 Ready to start mining? Get the app at https://www.trust-coin.site"
         ]
         
         try:
@@ -342,31 +299,23 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
         except Exception as e:
             logger.error(f"Error responding to mention: {e}")
     
-    # Keyword responses (English only)
+    # Respond to common keywords
     keywords_responses = {
         "mining": "⛏️ Start your 24-hour mining session in the TrustCoin app! Earn up to 1,000 points daily!",
-        "mine": "⛏️ Ready to mine? Download TrustCoin app and start earning points 24/7!",
         "points": "💰 Earn points through mining, missions, and referrals! 1,000 points = 1 TBN token!",
-        "app": "📱 Download Android app: https://play.google.com/store/apps/details?id=com.jawad06_dev.trustcoinmobile.v3",
-        "download": "📱 Download Android app: https://play.google.com/store/apps/details?id=com.jawad06_dev.trustcoinmobile.v3",
+        "app": "📱 Download the TrustCoin app: https://www.trust-coin.site",
         "referral": "🔗 Invite friends and earn 1,000 points per successful referral!",
         "token": "💎 TBN tokens will be available after mainnet launch on Binance Smart Chain!",
-        "tbn": "🚀 TBN is the future of mobile mining! Join now before mainnet launch!",
-        "help": "❓ Type /start to see all available information and features!",
-        "price": "💰 Price will be determined at official launch! Start mining now to collect maximum points!",
-        "when": "⏰ Very soon! Keep mining to be ready for launch!"
+        "help": "❓ Type /start to see all available information and features!"
     }
     
-    # Check for keywords (30% response rate to avoid spam)
-    for keyword, responses in keywords_responses.items():
-        if keyword in message_lower and random.random() < 0.3:
+    for keyword, response in keywords_responses.items():
+        if keyword in message_text.lower() and random.random() < 0.3:  # 30% chance to respond
             try:
-                response = random.choice(responses) if isinstance(responses, list) else responses
                 await update.message.reply_text(response, parse_mode="Markdown")
-                logging.info(f"✅ Replied to keyword '{keyword}' in group {chat_id}")
                 break
             except Exception as e:
-                logging.error(f"❌ Error responding to keyword {keyword}: {e}")
+                logger.error(f"Error responding to keyword {keyword}: {e}")
 
 # Admin commands
 
@@ -829,15 +778,7 @@ def main() -> None:
         with open('/tmp/bot_healthy', 'w') as f:
             f.write('starting')
             
-        # Build application without JobQueue to avoid weak reference issues
-        try:
-            bot_app = ApplicationBuilder().token(BOT_TOKEN_ENG).build()
-        except TypeError as e:
-            if "weak reference" in str(e):
-                logging.warning("⚠️ JobQueue weak reference issue, building without JobQueue")
-                bot_app = ApplicationBuilder().token(BOT_TOKEN_ENG).job_queue(None).build()
-            else:
-                raise
+        bot_app = ApplicationBuilder().token(BOT_TOKEN_ENG).build()
         
         # Track /start command usage
         async def track_start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -864,17 +805,6 @@ def main() -> None:
         # Add chat member handler for welcome messages
         bot_app.add_handler(ChatMemberHandler(handle_chat_member_update, ChatMemberHandler.CHAT_MEMBER))
         
-        # Add auto-posting job (skip if JobQueue has issues)
-        try:
-            job_queue = bot_app.job_queue
-            if job_queue:
-                # Start auto-posting after 30 seconds, then every 2 minutes
-                job_queue.run_once(start_auto_posting_job, 30)
-                logging.info("✅ Auto-posting job scheduled")
-        except Exception as e:
-            logging.warning(f"⚠️ JobQueue not available, auto-posting disabled: {e}")
-            logging.info("💡 Auto-posting will be handled manually if needed")
-        
         # Add handler for all messages to debug FIRST
         async def debug_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             if update.message:
@@ -900,8 +830,8 @@ def main() -> None:
         # Don't start Flask server here to avoid port conflicts
         logging.info("Bot starting without Flask server (handled by app.py)")
         
-        # Enable auto-posting
-        logging.info("✅ Auto-posting enabled - will start after bot initialization")
+        # Disable auto-posting for testing
+        logging.info("Auto-posting disabled for testing")
         
         if webhook_url:
             # Production mode with webhook
@@ -946,10 +876,9 @@ def main() -> None:
             except:
                 pass
             
-            logging.info("Starting English bot in polling mode...")
             logging.info("🤖 TrustCoin Bot FULL VERSION is now active with enhanced group features!")
             logging.info("✅ Welcome messages enabled")
-            logging.info("✅ Auto-posting enabled - will start after bot initialization")
+            logging.info("✅ Auto-posting disabled for testing")
             logging.info("✅ User monitoring enabled")
             logging.info("✅ Group interaction enabled")
             logging.info("✅ All advanced features available")
@@ -987,20 +916,6 @@ def main() -> None:
             
             # Run bot polling in main thread (no event loop issues)
             logging.info("Starting bot polling in main thread...")
-            
-            # Force clear webhook before polling to avoid conflicts
-            try:
-                import asyncio
-                async def clear_webhook():
-                    await bot_app.bot.delete_webhook(drop_pending_updates=True)
-                    logging.info("✅ Webhook cleared before polling")
-                
-                # Run webhook clearing in a separate event loop
-                asyncio.run(clear_webhook())
-                time.sleep(3)  # Wait to ensure webhook is fully cleared
-            except Exception as e:
-                logging.error(f"Error clearing webhook: {e}")
-            
             bot_app.run_polling(drop_pending_updates=True)
             
     except InvalidToken:
