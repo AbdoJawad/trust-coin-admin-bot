@@ -934,9 +934,10 @@ def main() -> None:
             except:
                 pass
             
+            logging.info("Starting English bot in polling mode...")
             logging.info("🤖 TrustCoin Bot FULL VERSION is now active with enhanced group features!")
             logging.info("✅ Welcome messages enabled")
-            logging.info("✅ Auto-posting disabled for testing")
+            logging.info("✅ Auto-posting enabled - will start after bot initialization")
             logging.info("✅ User monitoring enabled")
             logging.info("✅ Group interaction enabled")
             logging.info("✅ All advanced features available")
@@ -974,6 +975,19 @@ def main() -> None:
             
             # Run bot polling in main thread (no event loop issues)
             logging.info("Starting bot polling in main thread...")
+            
+            # Force clear webhook before polling to avoid conflicts
+            try:
+                import asyncio
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(bot_app.bot.delete_webhook(drop_pending_updates=True))
+                loop.close()
+                logging.info("✅ Webhook cleared before polling")
+                time.sleep(3)  # Wait to ensure webhook is fully cleared
+            except Exception as e:
+                logging.error(f"Error clearing webhook: {e}")
+            
             bot_app.run_polling(drop_pending_updates=True)
             
     except InvalidToken:
