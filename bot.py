@@ -794,9 +794,37 @@ def run_flask():
     # Always run Flask server for render.com compatibility
     flask_app.run(host='0.0.0.0', port=port, debug=False)
 
+async def force_clear_webhook():
+    """Force clear webhook and wait for conflicts to resolve."""
+    try:
+        # Create a temporary bot instance just for clearing webhook
+        temp_bot = Bot(token=BOT_TOKEN_ENG)
+        
+        logging.info("🔄 Force clearing webhook and pending updates...")
+        await temp_bot.delete_webhook(drop_pending_updates=True)
+        
+        # Wait for any existing instances to timeout
+        logging.info("⏳ Waiting 60 seconds for existing instances to timeout...")
+        await asyncio.sleep(60)
+        
+        # Try to get updates to clear any remaining
+        try:
+            await temp_bot.get_updates(timeout=1, limit=100)
+        except:
+            pass
+            
+        logging.info("✅ Webhook cleared and conflicts should be resolved")
+        
+    except Exception as e:
+        logging.error(f"Error force clearing webhook: {e}")
+
 def main() -> None:
     """Initialize the bot."""
     global bot_app
+    
+    # Force clear webhook first to resolve conflicts
+    logging.info("🚀 Starting TrustCoin Bot - clearing conflicts first...")
+    asyncio.run(force_clear_webhook())
     
     try:
         # Create health check file for Docker
@@ -946,6 +974,14 @@ def main() -> None:
                 """Called after the bot starts."""
                 logging.info("🚀 Bot started successfully - initializing auto-posting")
                 
+                # Force clear webhook and pending updates
+                try:
+                    await application.bot.delete_webhook(drop_pending_updates=True)
+                    logging.info("✅ Webhook cleared forcefully")
+                    await asyncio.sleep(2)
+                except Exception as e:
+                    logging.error(f"Error clearing webhook: {e}")
+                
                 # Start auto-posting task
                 async def start_auto_posting():
                     await asyncio.sleep(60)  # Wait 1 minute before first post
@@ -964,22 +1000,26 @@ def main() -> None:
             # Set the post_init callback
             bot_app.post_init = post_init
             
+            # Wait longer before starting to avoid conflicts
+            logging.info("Waiting 10 seconds to avoid conflicts...")
+            import time
+            time.sleep(10)
+            
             # Run bot polling in main thread (no event loop issues)
             logging.info("Starting bot polling in main thread...")
             
-            # Add error handler for conflicts
+            # Add simple error handler
             async def error_handler(update, context):
                 """Handle errors during bot operation."""
                 if "Conflict" in str(context.error):
-                    logging.warning("⚠️ Bot conflict detected - another instance may be running")
-                    logging.info("Waiting 30 seconds before retrying...")
-                    await asyncio.sleep(30)
+                    logging.warning("⚠️ Bot conflict detected - will retry automatically")
                 else:
                     logging.error(f"❌ Bot error: {context.error}")
             
             bot_app.add_error_handler(error_handler)
             
-            bot_app.run_polling(drop_pending_updates=True)
+            # Start with aggressive drop of pending updates
+            bot_app.run_polling(drop_pending_updates=True, timeout=30)
             
     except InvalidToken:
         logging.error("❌ Invalid bot token. Please check your BOT_TOKEN_ENG.")
