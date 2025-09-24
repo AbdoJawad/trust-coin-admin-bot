@@ -271,9 +271,9 @@ async def send_start_reminder():
         return
     
     start_messages = [
-        "🚀 **اكتشف عالم TrustCoin!**\n\n💎 للحصول على معلومات شاملة عن المشروع والميزات\n👆 اضغط على /start\n\n📱 ابدأ رحلتك في التعدين الآن!",
-        "⛏️ **هل تريد معرفة المزيد عن TrustCoin؟**\n\n🎯 جميع المعلومات والروابط متوفرة\n👆 اكتب /start\n\n💰 ابدأ كسب النقاط اليوم!",
-        "🎁 **مرحباً بك في مجتمع TrustCoin!**\n\n📋 لعرض القائمة الكاملة والمعلومات\n👆 استخدم /start\n\n🌟 انضم لآلاف المعدنين حول العالم!"
+        "🚀 **Discover the TrustCoin World!**\n\n💎 Get comprehensive project information and features\n👆 Type /start\n\n📱 Begin your mining journey now!",
+        "⛏️ **Want to learn more about TrustCoin?**\n\n🎯 All information and links available\n👆 Use /start\n\n💰 Start earning points today!",
+        "🎁 **Welcome to TrustCoin Community!**\n\n📋 View complete menu and information\n👆 Press /start\n\n🌟 Join thousands of miners worldwide!"
     ]
     
     # Get all groups where the bot is active
