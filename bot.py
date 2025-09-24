@@ -5,7 +5,6 @@ import threading
 import signal
 import sys
 import json
-import random
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from dotenv import load_dotenv
@@ -17,6 +16,7 @@ from telegram import (
     InputFile,
     ChatMember,
     ChatMemberUpdated,
+    Bot
 )
 from telegram.ext import (
     ApplicationBuilder,
@@ -824,7 +824,11 @@ def main() -> None:
     
     # Force clear webhook first to resolve conflicts
     logging.info("🚀 Starting TrustCoin Bot - clearing conflicts first...")
-    asyncio.run(force_clear_webhook())
+    try:
+        asyncio.run(force_clear_webhook())
+    except Exception as e:
+        logging.error(f"Error in force clear: {e}")
+        # Continue anyway
     
     try:
         # Create health check file for Docker
@@ -1019,7 +1023,16 @@ def main() -> None:
             bot_app.add_error_handler(error_handler)
             
             # Start with aggressive drop of pending updates
-            bot_app.run_polling(drop_pending_updates=True, timeout=30)
+            try:
+                bot_app.run_polling(drop_pending_updates=True, timeout=30)
+            except RuntimeError as e:
+                if "no current event loop" in str(e).lower():
+                    logging.info("Creating new event loop for bot...")
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    bot_app.run_polling(drop_pending_updates=True, timeout=30)
+                else:
+                    raise
             
     except InvalidToken:
         logging.error("❌ Invalid bot token. Please check your BOT_TOKEN_ENG.")
