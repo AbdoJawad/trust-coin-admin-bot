@@ -262,6 +262,52 @@ async def auto_post_to_groups():
     last_auto_post_time = datetime.now()
     logging.info(f"✅ Auto-posting completed - sent to {posts_sent} groups")
 
+async def send_start_reminder():
+    """Send /start reminder to groups."""
+    global bot_app
+    
+    if not bot_app:
+        logging.warning("No bot app available for start reminder")
+        return
+    
+    start_messages = [
+        "🚀 **اكتشف عالم TrustCoin!**\n\n💎 للحصول على معلومات شاملة عن المشروع والميزات\n👆 اضغط على /start\n\n📱 ابدأ رحلتك في التعدين الآن!",
+        "⛏️ **هل تريد معرفة المزيد عن TrustCoin؟**\n\n🎯 جميع المعلومات والروابط متوفرة\n👆 اكتب /start\n\n💰 ابدأ كسب النقاط اليوم!",
+        "🎁 **مرحباً بك في مجتمع TrustCoin!**\n\n📋 لعرض القائمة الكاملة والمعلومات\n👆 استخدم /start\n\n🌟 انضم لآلاف المعدنين حول العالم!"
+    ]
+    
+    # Get all groups where the bot is active
+    group_chat_ids = os.getenv('GROUP_CHAT_IDS', '').split(',')
+    
+    if not group_chat_ids or not group_chat_ids[0].strip():
+        logging.warning("No group chat IDs configured for start reminder")
+        return
+    
+    reminders_sent = 0
+    for chat_id in group_chat_ids:
+        if chat_id.strip():
+            try:
+                # Clean the chat_id - remove any extra dashes
+                clean_chat_id = chat_id.strip()
+                if clean_chat_id.startswith('--'):
+                    clean_chat_id = clean_chat_id[1:]  # Remove one extra dash
+                
+                chat_id_int = int(clean_chat_id)
+                await bot_app.bot.send_message(
+                    chat_id=chat_id_int,
+                    text=random.choice(start_messages),
+                    parse_mode="Markdown"
+                )
+                reminders_sent += 1
+                logging.info(f"📢 Start reminder sent to group {clean_chat_id}")
+                await asyncio.sleep(1)  # Small delay between posts
+            except ValueError as e:
+                logging.error(f"❌ Invalid chat ID format for reminder {chat_id}: {e}")
+            except Exception as e:
+                logging.error(f"❌ Error sending start reminder to group {chat_id}: {e}")
+    
+    logging.info(f"✅ Start reminders completed - sent to {reminders_sent} groups")
+
 async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle messages in group chats for user interaction and monitoring."""
     if not update.message or not update.effective_user:
@@ -992,10 +1038,21 @@ def main() -> None:
                 # Start auto-posting task
                 async def start_auto_posting():
                     await asyncio.sleep(60)  # Wait 1 minute before first post
+                    post_counter = 0
+                    
                     while True:
                         try:
-                            await auto_post_to_groups()
-                            await asyncio.sleep(AUTO_POST_INTERVAL)  # Wait between posts
+                            post_counter += 1
+                            
+                            # Every minute: Send /start reminder
+                            if post_counter % 1 == 0:
+                                await send_start_reminder()
+                            
+                            # Every 2 minutes: Send varied content post
+                            if post_counter % 2 == 0:
+                                await auto_post_to_groups()
+                            
+                            await asyncio.sleep(60)  # Wait 1 minute between checks
                         except Exception as e:
                             logging.error(f"Error in auto-posting loop: {e}")
                             await asyncio.sleep(60)  # Wait 1 minute on error
@@ -1025,15 +1082,29 @@ def main() -> None:
             
             bot_app.add_error_handler(error_handler)
             
-            # Start with aggressive drop of pending updates
+            # Start with optimized polling settings
             try:
-                bot_app.run_polling(drop_pending_updates=True, timeout=30)
+                bot_app.run_polling(
+                    drop_pending_updates=True, 
+                    timeout=10,  # Reduced timeout
+                    poll_interval=2.0,  # Increased poll interval to reduce requests
+                    read_timeout=6,
+                    write_timeout=6,
+                    connect_timeout=6
+                )
             except RuntimeError as e:
                 if "no current event loop" in str(e).lower():
                     logging.info("Creating new event loop for bot...")
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
-                    bot_app.run_polling(drop_pending_updates=True, timeout=30)
+                    bot_app.run_polling(
+                        drop_pending_updates=True, 
+                        timeout=10,
+                        poll_interval=2.0,
+                        read_timeout=6,
+                        write_timeout=6,
+                        connect_timeout=6
+                    )
                 else:
                     raise
             
