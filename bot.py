@@ -5,6 +5,7 @@ import threading
 import signal
 import sys
 import json
+import random
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from dotenv import load_dotenv
@@ -168,7 +169,11 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def handle_chat_member_update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle chat member updates (joins, leaves, etc.)."""
-    logging.info(f"🔔 Chat member update received: {update.chat_member}")
+    logging.info(f"🔔 Chat member update received in chat {update.effective_chat.id}")
+    
+    if not update.chat_member:
+        logging.warning("No chat member data in update")
+        return
     
     result = extract_status_change(update.chat_member)
     if result is None:
@@ -176,21 +181,19 @@ async def handle_chat_member_update(update: Update, context: ContextTypes.DEFAUL
         return
 
     was_member, is_member = result
-    cause_name = update.chat_member.from_user.mention_html()
-    member_name = update.chat_member.new_chat_member.user.mention_html()
+    user = update.chat_member.new_chat_member.user
     
-    logging.info(f"Member status change - Was member: {was_member}, Is member: {is_member}")
+    logging.info(f"👤 User {user.first_name} ({user.id}) - Was member: {was_member}, Is member: {is_member}")
 
     if not was_member and is_member:
         # New member joined
-        logging.info(f"New member joined: {member_name}")
+        logging.info(f"🎉 New member joined: {user.first_name}")
         await welcome_new_member(update, context)
     elif was_member and not is_member:
         # Member left
-        user_id = update.chat_member.new_chat_member.user.id
-        if user_id in user_activity:
-            track_user_activity(user_id, update.chat_member.new_chat_member.user.username, "left_group")
-        logging.info(f"Member left: {member_name}")
+        if user.id in user_activity:
+            track_user_activity(user.id, user.username, "left_group")
+        logging.info(f"👋 Member left: {user.first_name}")
 
 def extract_status_change(chat_member_update: ChatMemberUpdated) -> Optional[tuple[bool, bool]]:
     """Extract whether the user was a member before and after the update."""
@@ -322,7 +325,7 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
                 parse_mode="Markdown"
             )
         except Exception as e:
-            logger.error(f"Error responding to mention: {e}")
+            logging.error(f"Error responding to mention: {e}")
     
     # Respond to common keywords
     keywords_responses = {
@@ -937,7 +940,7 @@ def main() -> None:
             
             logging.info("🤖 TrustCoin Bot FULL VERSION is now active with enhanced group features!")
             logging.info("✅ Welcome messages enabled")
-            logging.info("✅ Auto-posting disabled for testing")
+            logging.info("✅ Auto-posting enabled every 2 minutes")
             logging.info("✅ User monitoring enabled")
             logging.info("✅ Group interaction enabled")
             logging.info("✅ All advanced features available")
