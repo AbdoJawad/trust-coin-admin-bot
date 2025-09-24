@@ -1035,22 +1035,40 @@ def main() -> None:
                 except Exception as e:
                     logging.error(f"Error clearing webhook: {e}")
                 
-                # Start auto-posting task
+                # Start auto-posting task with health monitoring
                 async def start_auto_posting():
                     await asyncio.sleep(60)  # Wait 1 minute before first post
                     post_counter = 0
+                    last_successful_post = datetime.now()
                     
                     while True:
                         try:
                             post_counter += 1
+                            current_time = datetime.now()
+                            
+                            # Health check: if no successful post in 10 minutes, restart
+                            if (current_time - last_successful_post).total_seconds() > 600:
+                                logging.warning("🚨 Auto-posting health check failed - restarting...")
+                                post_counter = 0
+                                last_successful_post = current_time
                             
                             # Every minute: Send /start reminder
                             if post_counter % 1 == 0:
-                                await send_start_reminder()
+                                try:
+                                    await send_start_reminder()
+                                    last_successful_post = current_time
+                                    logging.info(f"✅ Health check: Start reminder sent at {current_time}")
+                                except Exception as e:
+                                    logging.error(f"❌ Start reminder failed: {e}")
                             
                             # Every 2 minutes: Send varied content post
                             if post_counter % 2 == 0:
-                                await auto_post_to_groups()
+                                try:
+                                    await auto_post_to_groups()
+                                    last_successful_post = current_time
+                                    logging.info(f"✅ Health check: Auto-post sent at {current_time}")
+                                except Exception as e:
+                                    logging.error(f"❌ Auto-post failed: {e}")
                             
                             await asyncio.sleep(60)  # Wait 1 minute between checks
                         except Exception as e:
@@ -1072,25 +1090,51 @@ def main() -> None:
             # Run bot polling in main thread (no event loop issues)
             logging.info("Starting bot polling in main thread...")
             
-            # Add simple error handler
+            # Add aggressive error handler with restart mechanism
+            conflict_count = 0
+            max_conflicts = 5
+            
             async def error_handler(update, context):
                 """Handle errors during bot operation."""
+                nonlocal conflict_count
+                
                 if "Conflict" in str(context.error):
-                    logging.warning("⚠️ Bot conflict detected - will retry automatically")
+                    conflict_count += 1
+                    logging.warning(f"⚠️ Bot conflict detected ({conflict_count}/{max_conflicts}) - will retry automatically")
+                    
+                    if conflict_count >= max_conflicts:
+                        logging.error("🚨 Too many conflicts! Attempting aggressive restart...")
+                        try:
+                            # Stop current application
+                            await context.application.stop()
+                            await asyncio.sleep(30)  # Wait 30 seconds
+                            
+                            # Clear webhook again
+                            await context.application.bot.delete_webhook(drop_pending_updates=True)
+                            await asyncio.sleep(10)
+                            
+                            # Restart application
+                            await context.application.start()
+                            conflict_count = 0  # Reset counter
+                            logging.info("✅ Bot restarted successfully after conflicts")
+                        except Exception as e:
+                            logging.error(f"❌ Failed to restart bot: {e}")
                 else:
                     logging.error(f"❌ Bot error: {context.error}")
             
             bot_app.add_error_handler(error_handler)
             
-            # Start with optimized polling settings
+            # Start with highly optimized polling settings to prevent conflicts
             try:
                 bot_app.run_polling(
                     drop_pending_updates=True, 
-                    timeout=10,  # Reduced timeout
-                    poll_interval=2.0,  # Increased poll interval to reduce requests
-                    read_timeout=6,
-                    write_timeout=6,
-                    connect_timeout=6
+                    timeout=5,  # Very short timeout
+                    poll_interval=3.0,  # Longer interval between requests
+                    read_timeout=10,
+                    write_timeout=10,
+                    connect_timeout=10,
+                    bootstrap_retries=3,  # Retry on startup
+                    allowed_updates=["message", "callback_query", "chat_member"]  # Only essential updates
                 )
             except RuntimeError as e:
                 if "no current event loop" in str(e).lower():
